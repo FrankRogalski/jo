@@ -1,3 +1,20 @@
+function merge(intervals) {
+    if (intervals.length < 2) return intervals;
+    intervals.sort((a, b) => a[0] - b[0]);
+    const result = [];
+    let previous = intervals[0];
+    for (let i = 1; i < intervals.length; i += 1) {
+        if (previous[1] >= intervals[i][0]) {
+            previous = [previous[0], Math.max(previous[1], intervals[i][1])];
+        } else {
+            result.push(previous);
+            previous = intervals[i];
+        }
+    }
+    result.push(previous);
+    return result;
+};
+
 function getHighlighting(searchTerm, value) {
     const reg = RegExp("(?=(" + searchTerm
         .trim()
@@ -5,26 +22,18 @@ function getHighlighting(searchTerm, value) {
         .split(/\s+/g)
         .map(term => term.split("").join("[^\\d\\p{L}]*?"))
         .join("|") + "))", "guid");
-    const matchedIndecies = Array.from(new Set(Array.from(value.matchAll(reg))
-        .flatMap(match => [...Array(match[1].length).keys()]
-            .map(i => i + match.index))));
+    const ranges = merge(Array.from(value.matchAll(reg))
+        .map(match => [match.index, match[1].length + match.index]));
+    ranges.reverse();
     const result = [...value];
-    if (matchedIndecies.length > 0) {
-        matchedIndecies.sort((a, b) => b - a);
-        matchedIndecies.reduce((lastIndex, index) => {
-            if (index !== lastIndex - 1) {
-                result.splice(lastIndex, 0, "<em>");
-                result.splice(index + 1, 0, "</em>");
-            }
-            return index;
-        }, result.length + 1);
-        result.pop();
-        result.splice(matchedIndecies[matchedIndecies.length - 1], 0, "<em>");
+    for (const [start, end] of ranges) {
+        result.splice(end, 0, "</em>");
+        result.splice(start, 0, "<em>");
     }
     return result.join("");
 }
 
-console.log(getHighlighting("abc wr rs", "abcwrsab   &&&&c---wrsgsfrs"));
+console.log(getHighlighting("ab cd", "abcd"));
 
 // let a = performance.now();
 // for (let i = 0; i < 10000; i ++) {
